@@ -51,13 +51,13 @@
 </div>
 <script>
   var firebaseConfig = {
-    apiKey: "AIzaSyDtcTSPOP5yUb9ZlNGgb1krROyLlAYXaeg",
-    authDomain: "connectome-vn.firebaseapp.com",
-    databaseURL: "https://connectome-vn.firebaseio.com",
-    projectId: "connectome-vn",
+    apiKey: "AIzaSyDoyY_Hn8xpIbTJg5udrzWBz6wR2k7ATLc",
+    authDomain: "neurobase-authen-dev.firebaseapp.com",
+    databaseURL: "https://neurobase-authen-dev.firebaseio.com",
+    projectId: "neurobase-authen-dev",
     storageBucket: "",
-    messagingSenderId: "1062366039219",
-    appId: "1:1062366039219:web:47535f81732f7557"
+    messagingSenderId: "282492215125",
+    appId: "1:282492215125:web:81fb8940887c01700619dc"
   };
   // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
@@ -86,6 +86,11 @@
                       }).catch(error => {
                           console.log('🤕' + error.message)
                       })*/
+                      console.log(idToken)
+                      axios.get('http://localhost:5000/users/api/1/genders/')
+                      .then(
+                          console.log(response)
+                      )
                   }).catch( function(error) {
                       // Handle error
                       console.log(error.message)
