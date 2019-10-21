@@ -4,224 +4,169 @@
   <meta charset="UTF-8">
   <title>Firebase Authentication</title>
   <script src="https://www.gstatic.com/firebasejs/4.13.0/firebase.js"></script>
-
   <script src="https://unpkg.com/vue"></script>
-  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 </head>
 <body>
+
 <div id="app">
-    {{ info }}
-    <h1>Vue School - Firebase Authentication</h1>
-    <div v-if="authUser">
-        <h2> Signed in as {{authUser.email}}</h2>
-        <img :src="authUser.photoURL" height="150">
-        <p>What's up, {{authUser.displayName || 'Friend' }}? </p>
-        <button @click="signOut">Sign Out</button>
+  <h1>Vue School - Firebase Authentication</h1>
+  <div v-if="authUser">
+    <h2>Signed in as {{authUser.email}}
+      <img v-if="linkedGoogle" src="https://www.gstatic.com/mobilesdk/160512_mobilesdk/auth_service_google.svg" alt="">
+      <img v-if="linkedPassword" src="https://www.gstatic.com/mobilesdk/160409_mobilesdk/images/auth_service_email.svg" alt="">
+    </h2>
+    <img :src="authUser.photoURL" height="150">
+    <p>👩‍🍳 Hi, {{authUser.displayName || 'friend'}} we know you like {{authUser.favoriteFood || 'food'}}.</p>
+    <button @click="signOut">Sign out</button>
+    <button v-if="!linkedGoogle" @click="linkGoogle">Link Google Account</button>
+    <button v-else @click="unlinkGoogle">Unlink Google Account</button>
+
+    <form @submit.prevent="updateProfile">
+      <h2>Update Profile</h2>
+      <input v-model="displayName" placeholder="Your name">
+      <input v-model="photoURL" placeholder="Your photo url">
+      <button>Update</button>
+    </form>
+
+    <form @submit.prevent="updateCustomDetails">
+      <h2>Update Additional Details</h2>
+      <input v-model="favoriteFood" placeholder="Your favorite food">
+      <button>Update</button>
+    </form>
+
+    <form @submit.prevent="updateEmail">
+      <h2>Update Email</h2>
+      <input v-model="email" placeholder="Your email">
+      <button>Update</button>
+    </form>
+
+    <form @submit.prevent="updatePassword">
+      <h2>Update Password</h2>
+      <input type="password" v-model="newPassword" placeholder="Your password">
+      <button>Update</button>
+    </form>
+  </div>
+
+  <div v-else>
+    <form @submit.prevent="register">
+      <h2>Register</h2>
+      <input type="email" v-model="email" placeholder="Type your email">
+      <input type="password" v-model="password" placeholder="Pick your password">
+      <button>Register</button>
+    </form>
+
+    <form @submit.prevent="signIn">
+      <h2>Sign in</h2>
+      <input type="email" v-model="email" placeholder="Type your email">
+      <input type="password" v-model="password" placeholder="Type your password">
+      <button>Sign In</button>
+    </form>
+
+    <div>
+      <h2>Sign in with Google</h2>
+      <button @click="signInWithGoogle">Sign In</button>
     </div>
-    <div v-else>
-        <form @submit.prevent="register">
-            <h2>Register</h2>
-            <input type="email" v-model="email" placeholder="Type your email">
-            <input type="password" v-model="password" placeholder="Pick your password">
-            <button>Register</button>
-        </form>
-        <form @submit.prevent="signIn">
-            <h2>Sign In</h2>
-            <input type="email" v-model="email" placeholder="Type your email">
-            <input type="password" v-model="password" placeholder="Type your password">
-            <button>Sign In</button>
-        </form>
-        <div>
-            <h2>Sign In With Google</h2>
-            <button @click="signInWithGoogle">Sign In</button>
-        </div>
-        <div>
-            <h2>Sign In With Facebook</h2>
-            <button @click="signInWithFacebook">Sign In</button>
-        </div>
-        <div>
-            <h2>Sign In With Github</h2>
-            <button @click="signInWithGithub">Sign In</button>
-        </div>
-        <div>
-            <h2>Sign In With Twitter</h2>
-            <button @click="signInWithTwitter">Sign In</button>
-        </div>
-    </div>
+  </div>
 </div>
+
 <script>
-  var firebaseConfig = {
-    apiKey: "AIzaSyDoyY_Hn8xpIbTJg5udrzWBz6wR2k7ATLc",
-    authDomain: "neurobase-authen-dev.firebaseapp.com",
-    databaseURL: "https://neurobase-authen-dev.firebaseio.com",
-    projectId: "neurobase-authen-dev",
-    storageBucket: "",
-    messagingSenderId: "282492215125",
-    appId: "1:282492215125:web:81fb8940887c01700619dc"
-  };
   // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
+  const config = {
+    apiKey: "AIzaSyCcT0BUbiZiKUuCw3AtB4U8UExHQkjI2e8",
+    authDomain: "vueschool-firebase-au.firebaseapp.com",
+    databaseURL: "https://vueschool-firebase-au.firebaseio.com",
+    projectId: "vueschool-firebase-au",
+    storageBucket: "vueschool-firebase-au.appspot.com",
+    messagingSenderId: "795856805888"
+  }
+  firebase.initializeApp(config)
+
   new Vue({
-      el: '#app',
+    el: '#app',
 
-      data: {
-          email: '',
-          password: '',
-          authUser: null,
-          info: null
+    data: {
+      email: '',
+      password: '',
+      displayName: null,
+      photoURL: null,
+      newPassword: null,
+      favoriteFood: null,
+      authUser: null
+    },
+
+    computed: {
+      linkedGoogle () {
+        return !!this.authUser.providerData.find(provider => provider.providerId === 'google.com')
       },
+      linkedPassword () {
+        return !!this.authUser.providerData.find(provider => provider.providerId === 'password')
+      }
+    },
 
-      methods: {
-          register() {
-              firebase.auth().createUserWithEmailAndPassword(
-                  this.email, this.password
-              ).catch(error => console.log('🤕' + error.message)).then( function (data) {
-                  firebase.auth().currentUser.getIdToken(/* forceRefresh */ true).then(function(idToken) {
-                      // Send token to your backend via HTTPS
-                      // ...
-                      /*const formData = new FormData();
-                      formData.append('access_token', idToken);
-                      axios.post('http://localhost:5000/user/v1/google', formData).then( response => {
-                          console.log(response)
-                      }).catch(error => {
-                          console.log('🤕' + error.message)
-                      })*/
-                      console.log(idToken)
-                      axios.get('http://localhost:5000/users/api/1/genders/')
-                      .then(
-                          console.log(response)
-                      )
-                  }).catch( function(error) {
-                      // Handle error
-                      console.log(error.message)
-                  });
-              })
-          },
-          signOut() {
-              firebase.auth().signOut()
-          },
-          signIn() {
-              firebase.auth().signInWithEmailAndPassword(this.email,
-                    this.password
-                ).catch(error => console.log('🤕' + error.message)).then( function (data) {
-                  firebase.auth().currentUser.getIdToken(/* forceRefresh */ true).then(function(idToken) {
-                      // Send token to your backend via HTTPS
-                      // ...
-                      /*const formData = new FormData();
-                      formData.append('access_token', idToken);
-                      axios.post('http://localhost:5000/user/v1/register', formData).then( response => {
-                          console.log(response)
-                      }).catch(error => {
-                          console.log('🤕' + error.message)
-                      })*/
-                  }).catch( function(error) {
-                      // Handle error
-                      console.log(error.message)
-                  });
-              })
-          },
-          signInWithGoogle() {
-              const provider = new firebase.auth.GoogleAuthProvider()
-              provider.addScope('profile');
-              provider.addScope('email');
-              firebase.auth().signInWithPopup(provider)
-              .catch(error => console.log('🤕' + error.message))
-              .then(function (data) {
-                  firebase.auth().currentUser.getIdToken(/* forceRefresh */ true).then(function(idToken) {
-                      // Send token to your backend via HTTPS
-                      // ...
-                      /*const formData = new FormData();
-                      formData.append('access_token', idToken);
-                      axios.post('http://localhost:5000/user/v1/google', formData).then( response => {
-                          console.log(response)
-                      }).catch(error => {
-                          console.log('🤕' + error.message)
-                      })*/
-                  }).catch( function(error) {
-                      // Handle error
-                      console.log(error.message)
-                  });
-              })
-          },
-          signInWithFacebook() {
-              const provider = new firebase.auth.FacebookAuthProvider()
-              provider.addScope('profile');
-              provider.addScope('email');
-              firebase.auth().signInWithPopup(provider)
-                  .catch(error => console.log('🤕' + error.message))
-                  .then( function (data)  {
-                      firebase.auth().currentUser.getIdToken(/* forceRefresh */ true).then(function(idToken) {
-                          // Send token to your backend via HTTPS
-                          // ...
-                          /*const formData = new FormData();
-                          formData.append('access_token', idToken);
-                          axios.post('http://localhost:5000/user/v1/facebook', formData).then( response => {
-                              console.log(response)
-                          }).catch(error => {
-                              console.log('🤕' + error.message)
-                          })*/
-                      }).catch( function(error) {
-                          // Handle error
-                          console.log(error.message)
-                      });
-                  })
-          },
-
-          signInWithGithub() {
-              const provider = new firebase.auth.GithubAuthProvider()
-              provider.addScope('profile');
-              provider.addScope('email');
-              firebase.auth().signInWithPopup(provider)
-                  .catch(error => console.log('🤕' + error.message))
-                  .then(function (data) {
-                      firebase.auth().currentUser.getIdToken(/* forceRefresh */ true).then(function(idToken) {
-                          // Send token to your backend via HTTPS
-                          // ...
-                          /*const formData = new FormData();
-                          formData.append('access_token', idToken);
-                          axios.post('http://localhost:5000/user/v1/github', formData).then( response => {
-                              console.log(response)
-                          }).catch(error => {
-                              console.log('🤕' + error.message)
-                          })*/
-                      }).catch( function(error) {
-                          // Handle error
-                          console.log(error.message)
-                      });
-                  })
-          },
-
-          signInWithTwitter() {
-              const provider = new firebase.auth.TwitterAuthProvider()
-              provider.addScope('profile');
-              provider.addScope('email');
-              firebase.auth().signInWithPopup(provider)
-                  .catch(error => alert('🤕' + error.message))
-                  .then(function(data) {
-                      firebase.auth().currentUser.getIdToken(/* forceRefresh */ true).then(function(idToken) {
-                          // Send token to your backend via HTTPS
-                          // ...
-                          /*const formData = new FormData();
-                          formData.append('access_token', idToken);
-                          axios.post('http://localhost:5000/user/v1/twitter', formData).then( response => {
-                              console.log(response)
-                          }).catch(error => {
-                              alert('🤕' + error.message)
-                          })*/
-                      }).catch( function(error) {
-                          // Handle error
-                          alert(error.message)
-                      })
-                  })
-          }
+    methods: {
+      register () {
+        firebase.auth().createUserWithEmailAndPassword(this.email, this.password)
+          .catch(error => alert('🤕' + error.message))
       },
-      created() {
-          firebase.auth().onAuthStateChanged(function (user) {
-              console.log(user)
-              this.authUser = user
+      signOut () {
+        firebase.auth().signOut()
+      },
+      signIn () {
+        firebase.auth().signInWithEmailAndPassword(this.email, this.password)
+          .catch(error => alert('🤕' + error.message))
+      },
+      signInWithGoogle () {
+        const provider = new firebase.auth.GoogleAuthProvider()
+        firebase.auth().signInWithPopup(provider)
+          .catch(error => alert('🤕' + error.message))
+          .then(data => console.log(data.user, data.credential.accessToken))
+      },
+      linkGoogle () {
+        const provider = new firebase.auth.GoogleAuthProvider()
+        this.authUser.linkWithPopup(provider)
+          .catch(error => alert('🤕' + error.message))
+      },
+      unlinkGoogle () {
+        this.authUser.unlink('google.com')
+      },
+      updateProfile () {
+        this.authUser.updateProfile({
+          displayName: this.displayName,
+          photoURL: this.photoURL
+        })
+      },
+      updateCustomDetails () {
+        firebase.database().ref('users').child(this.authUser.uid)
+          .update({favoriteFood: this.favoriteFood})
+      },
+      updateEmail () {
+        this.authUser.updateEmail(this.email)
+      },
+      updatePassword () {
+        this.authUser.updatePassword(this.newPassword)
+          .then(() => { this.newPassword = null })
+          .catch(error => alert('🤕' + error.message))
+      }
+    },
+
+    created () {
+      firebase.auth().onAuthStateChanged(user => {
+        this.authUser = user
+        if (user) {
+          this.displayName = user.displayName
+          this.photoURL = user.photoURL
+          this.email = user.email
+          firebase.database().ref('users').child(user.uid).once('value', snapshot => {
+            if (snapshot.val()) {
+              this.favoriteFood = snapshot.val().favoriteFood
+              Vue.set(this.authUser, 'favoriteFood', this.favoriteFood)
+            }
           })
-      },
+        }
+      })
+    }
   })
+
 </script>
 
 </body>
